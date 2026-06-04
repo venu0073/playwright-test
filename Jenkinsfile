@@ -147,12 +147,13 @@ stages {
             script {
 
                 if (params.RUN_AZURE) {
-
-                    bat """
-                    npx playwright test ^
-                    --config=playwright.service.config.js ^
-                    --workers=${params.WORKERS}
-                    """
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        bat """
+                        npx playwright test ^
+                        --config=playwright.service.config.js ^
+                        --workers=${params.WORKERS}
+                        """
+                    }
 
                 }
                 else {
