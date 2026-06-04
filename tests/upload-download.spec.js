@@ -45,12 +45,15 @@ test('Upload download excel validation',async ({page})=>
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button',{name:'Download'}).click();
   await downloadPromise;
-  writeExcelTest(textSearch,updateValue,{rowChange:0,colChange:2},"/Users/rahulshetty/downloads/download.xlsx");
   await page.locator("#fileinput").click();
-  await page.locator("#fileinput").setInputFiles("/Users/rahulshetty/downloads/download.xlsx");
+  // update the downloaded Excel before uploading so the page shows the expected value
+  await writeExcelTest(textSearch, updateValue, { rowChange: 0, colChange: 2 }, "C:\\Users\\bommi\\Documents\\playwrightdata\\download.xlsx");
+  await page.locator("#fileinput").setInputFiles("C:\\Users\\bommi\\Documents\\playwrightdata\\download.xlsx");
   const textlocator = page.getByText(textSearch);
   const desiredRow = await page.getByRole('row').filter({has :textlocator });
-  await expect(desiredRow.locator("#cell-4-undefined")).toContainText(updateValue);
+  // locate the Price cell by index (0=S No,1=Fruit Name,2=Color,3=Price) to avoid brittle ids
+  const priceCell = desiredRow.locator('[role="cell"]').nth(3);
+  await expect(priceCell).toHaveText(updateValue);
 
 
 
