@@ -110,15 +110,6 @@ stages {
         }
 
     }
-    stage('Verify Azure Login') {
-
-        steps {
-
-            bat 'az account show'
-
-        }
-
-    }
 
     stage('Install Playwright Browsers') {
 
