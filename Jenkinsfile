@@ -34,7 +34,7 @@ parameters {
 }
 
 triggers {
-
+    githubPush()
     // Every weekday at 9 AM
     cron('H 9 * * 1-5')
 
