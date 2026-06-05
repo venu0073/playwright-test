@@ -88,6 +88,14 @@ stages {
         }
 
     }
+     stage('Build Info') {
+    steps {
+        echo "Environment: ${params.ENV}"
+        echo "Browser: ${params.BROWSER}"
+        echo "Azure Mode: ${params.RUN_AZURE}"
+        echo "Workers: ${params.WORKERS}"
+    }
+}
 
     stage('Verify Environment') {
 
@@ -115,12 +123,15 @@ stages {
 
         steps {
 
-            bat 'npx playwright install'
+            bat 'npx playwright install --with-deps'
 
         }
 
     }
     stage('Azure Login') {
+    when {
+        expression { params.RUN_AZURE }
+    }
     steps {
         withCredentials([
             string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
@@ -147,7 +158,7 @@ stages {
             script {
 
                 if (params.RUN_AZURE) {
-                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
                         bat """
                         npx playwright test ^
                         --config=playwright.service.config.js ^
@@ -182,20 +193,60 @@ stages {
 
     }
 }
-    post {
-    always {
-
-        archiveArtifacts artifacts: 'playwright-report/**/*', allowEmptyArchive: true
-
-        publishHTML([
-            allowMissing: true,
-            alwaysLinkToLastBuild: true,
-            keepAll: true,
-            reportDir: 'playwright-report',
-            reportFiles: 'index.html',
-            reportName: 'Playwright Report'
-        ])
-    }
+   
 }
+    post {
 
+        always {
+
+            script {
+
+                try {
+
+                    bat 'az logout'
+
+                } catch(Exception e) {
+
+                    echo "Azure logout skipped"
+
+                }
+            }
+
+            archiveArtifacts(
+                artifacts: '''
+                    playwright-report/**,
+                    test-results/**,
+                    blob-report/**
+                ''',
+                allowEmptyArchive: true
+            )
+
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'playwright-report',
+                reportFiles: 'index.html',
+                reportName: 'Playwright HTML Report'
+            ])
+        }
+
+        success {
+
+            echo 'Build SUCCESS'
+
+        }
+
+        unstable {
+
+            echo 'Build UNSTABLE - Some tests failed'
+
+        }
+
+        failure {
+
+            echo 'Build FAILURE'
+
+        }
+    }
 }
