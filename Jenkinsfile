@@ -181,6 +181,7 @@ stages {
         }
 
     }
+}
     post {
     always {
 
@@ -195,7 +196,6 @@ stages {
             reportName: 'Playwright Report'
         ])
     }
-}
 }
 
 }
