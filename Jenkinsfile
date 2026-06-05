@@ -153,32 +153,43 @@ stages {
 
     stage('Run Playwright Tests') {
 
-        steps {
+            steps {
 
-            script {
+                script {
 
-                if (params.RUN_AZURE) {
-                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                        bat """
-                        npx playwright test ^
-                        --config=playwright.service.config.js ^
-                        --workers=${params.WORKERS}
-                        """
+                    if (params.RUN_AZURE) {
+
+                        catchError(
+                            buildResult: 'UNSTABLE',
+                            stageResult: 'UNSTABLE'
+                        ) {
+
+                            bat """
+                            npx playwright test ^
+                            --config=playwright.service.config.js ^
+                            --workers=${params.WORKERS}
+                            """
+
+                        }
+
+                    } else {
+
+                        catchError(
+                            buildResult: 'UNSTABLE',
+                            stageResult: 'UNSTABLE'
+                        ) {
+
+                            bat """
+                            npx playwright test ^
+                            --project=${params.BROWSER} ^
+                            --workers=${params.WORKERS}
+                            """
+
+                        }
                     }
-
-                }
-                else {
-
-                    bat """
-                    npx playwright test ^
-                    --project=${params.BROWSER} ^
-                    --workers=${params.WORKERS}
-                    """
-
                 }
             }
         }
-    }
 
     stage('Archive Test Results') {
 
