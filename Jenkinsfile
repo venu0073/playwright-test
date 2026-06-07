@@ -1,6 +1,5 @@
 pipeline {
 
-```
 agent any
 
 tools {
@@ -35,7 +34,7 @@ parameters {
 }
 
 triggers {
-
+    githubPush()
     // Every weekday at 9 AM
     cron('H 9 * * 1-5')
 
@@ -89,6 +88,14 @@ stages {
         }
 
     }
+     stage('Build Info') {
+    steps {
+        echo "Environment: ${params.ENV}"
+        echo "Browser: ${params.BROWSER}"
+        echo "Azure Mode: ${params.RUN_AZURE}"
+        echo "Workers: ${params.WORKERS}"
+    }
+}
 
     stage('Verify Environment') {
 
@@ -116,39 +123,73 @@ stages {
 
         steps {
 
-            bat 'npx playwright install'
+            bat 'npx playwright install --with-deps'
 
         }
 
     }
+    stage('Azure Login') {
+    when {
+        expression { params.RUN_AZURE }
+    }
+    steps {
+        withCredentials([
+            string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+            string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+            string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+        ]) {
+
+            bat """
+            az login --service-principal ^
+              --username %AZURE_CLIENT_ID% ^
+              --password %AZURE_CLIENT_SECRET% ^
+              --tenant %AZURE_TENANT_ID%
+            """
+
+            bat "az account show"
+        }
+    }
+}
 
     stage('Run Playwright Tests') {
 
-        steps {
+            steps {
 
-            script {
+                script {
 
-                if (params.RUN_AZURE) {
+                    if (params.RUN_AZURE) {
 
-                    bat """
-                    npx playwright test ^
-                    --config=playwright.service.config.js ^
-                    --workers=${params.WORKERS}
-                    """
+                        catchError(
+                            buildResult: 'UNSTABLE',
+                            stageResult: 'UNSTABLE'
+                        ) {
 
-                }
-                else {
+                            bat """
+                            npx playwright test ^
+                            --config=playwright.service.config.js ^
+                            --workers=${params.WORKERS}
+                            """
 
-                    bat """
-                    npx playwright test ^
-                    --project=${params.BROWSER} ^
-                    --workers=${params.WORKERS}
-                    """
+                        }
 
+                    } else {
+
+                        catchError(
+                            buildResult: 'UNSTABLE',
+                            stageResult: 'UNSTABLE'
+                        ) {
+
+                            bat """
+                            npx playwright test ^
+                            --project=${params.BROWSER} ^
+                            --workers=${params.WORKERS}
+                            """
+
+                        }
+                    }
                 }
             }
         }
-    }
 
     stage('Archive Test Results') {
 
@@ -163,39 +204,58 @@ stages {
 
     }
 }
+    post {
 
-post {
+        always {
 
-    always {
+            script {
 
-        publishHTML([
-            allowMissing: true,
-            alwaysLinkToLastBuild: true,
-            keepAll: true,
-            reportDir: 'playwright-report',
-            reportFiles: 'index.html',
-            reportName: 'Playwright Report'
-        ])
+                try {
 
-        archiveArtifacts(
-            artifacts: 'playwright-report/**/*',
-            allowEmptyArchive: true
-        )
+                    bat 'az logout'
 
+                } catch(Exception e) {
+
+                    echo "Azure logout skipped"
+
+                }
+            }
+
+            archiveArtifacts(
+                artifacts: '''
+                    playwright-report/**,
+                    test-results/**,
+                    blob-report/**
+                ''',
+                allowEmptyArchive: true
+            )
+
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'playwright-report',
+                reportFiles: 'index.html',
+                reportName: 'Playwright HTML Report'
+            ])
+        }
+
+        success {
+
+            echo 'Build SUCCESS'
+
+        }
+
+        unstable {
+
+            echo 'Build UNSTABLE - Some tests failed'
+
+        }
+
+        failure {
+
+            echo 'Build FAILURE'
+
+        }
     }
-
-    success {
-
-        echo 'Playwright execution completed successfully.'
-
-    }
-
-    failure {
-
-        echo 'Playwright execution failed.'
-
-    }
-}
-```
-
 }
