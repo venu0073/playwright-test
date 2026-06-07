@@ -17,8 +17,8 @@
       await page.goto("https://rahulshettyacademy.com/loginpagePractise/");
       console.log(await page.title());
       //css 
-     await userName.fill("rahulshetty");
-     await page.locator("[type='password']").fill("Learning@830$3mK2");
+     await userName.fill("bommisetty@gamil.com");
+     await page.locator("[type='password']").fill("Learning@830$3mK3");
      await signIn.click();
     console.log(await page.locator("[style*='block']").textContent());
     await expect(page.locator("[style*='block']")).toContainText('Incorrect');
